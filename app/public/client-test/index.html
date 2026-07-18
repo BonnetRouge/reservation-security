@@ -9,19 +9,31 @@
     <div id="reservations"></div>
 
     <script>
+        const token = prompt('Token JWT :');
+
         fetch('/api/reservations', {
             headers: {
-                'Authorization': 'Bearer ' + prompt('Token JWT :')
+                'Authorization': 'Bearer ' + token
             }
         })
         .then(res => res.json())
         .then(data => {
             const container = document.getElementById('reservations');
             data['member'].forEach(r => {
-                const div = document.createElement('div');
-                // VULNÉRABLE : injection directe du contenu HTML sans échappement
-                div.innerHTML = `<strong>${r.resourceName}</strong> - ${r.note}`;
-                container.appendChild(div);
+                const wrapper = document.createElement('div');
+
+                const title = document.createElement('strong');
+                title.textContent = r.resourceName;
+
+                const separator = document.createTextNode(' - ');
+
+                const note = document.createElement('span');
+                note.textContent = r.note;
+
+                wrapper.appendChild(title);
+                wrapper.appendChild(separator);
+                wrapper.appendChild(note);
+                container.appendChild(wrapper);
             });
         });
     </script>
