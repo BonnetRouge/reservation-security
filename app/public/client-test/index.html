@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Client de test - Réservations</title>
+</head>
+<body>
+    <h1>Réservations</h1>
+    <div id="reservations"></div>
+
+    <script>
+        fetch('/api/reservations', {
+            headers: {
+                'Authorization': 'Bearer ' + prompt('Token JWT :')
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('reservations');
+            data['member'].forEach(r => {
+                const div = document.createElement('div');
+                // VULNÉRABLE : injection directe du contenu HTML sans échappement
+                div.innerHTML = `<strong>${r.resourceName}</strong> - ${r.note}`;
+                container.appendChild(div);
+            });
+        });
+    </script>
+</body>
+</html>
