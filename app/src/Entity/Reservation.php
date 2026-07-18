@@ -8,40 +8,50 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Repository\ReservationRepository;
+use App\State\ReservationOwnerProcessor;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ReservationRepository::class)]
 #[ApiResource(
     operations: [
         new GetCollection(),
-        new Post(),
+        new Post(processor: ReservationOwnerProcessor::class),
         new Get(security: "is_granted('RESERVATION_VIEW', object)"),
         new Patch(security: "is_granted('RESERVATION_EDIT', object)"),
         new Delete(security: "is_granted('RESERVATION_EDIT', object)"),
-    ]
+    ],
+    normalizationContext: ['groups' => ['reservation:read']],
+    denormalizationContext: ['groups' => ['reservation:write']],
 )]
 class Reservation
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['reservation:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['reservation:read', 'reservation:write'])]
     private ?string $resourceName = null;
 
     #[ORM\Column]
+    #[Groups(['reservation:read', 'reservation:write'])]
     private ?\DateTimeImmutable $startAt = null;
 
     #[ORM\Column(length: 50)]
+    #[Groups(['reservation:read', 'reservation:write'])]
     private ?string $status = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['reservation:read', 'reservation:write'])]
     private ?string $note = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['reservation:read'])]
     private ?User $owner = null;
 
     public function getId(): ?int
