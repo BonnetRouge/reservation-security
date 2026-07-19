@@ -2,40 +2,143 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Client de test - Réservations</title>
+    <title>Réservations - Client de test</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auth; padding: 0 20px; }
+        section { margin-bottom: 30px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, button { padding: 8px; margin-top: 4px; width: 100%; box-sizing: border-box; }
+        button { margin-top: 12px; cursor: pointer; background: #2c3e50; color: white; border: none; border-radius: 4px; }
+        .reservation { border-bottom: 1px solid #eee; padding: 10px 0; }
+        #status { font-style: italic; color: #666; }
+    </style>
 </head>
 <body>
     <h1>Réservations</h1>
-    <div id="reservations"></div>
+    <p id="status">Non connecté</p>
+
+    <section id="login-section">
+        <h2>Connexion</h2>
+        <label>Email</label>
+        <input type="email" id="email" value="user@test.com">
+        <label>Mot de passe</label>
+        <input type="password" id="password" value="password123">
+        <button onclick="login()">Se connecter</button>
+    </section>
+
+    <section id="create-section" style="display:none;">
+        <h2>Réserver</h2>
+        <label>Nom de la ressource</label>
+        <input type="text" id="resourceName" placeholder="Salle de coworking C">
+        <label>Date et heure</label>
+        <input type="datetime-local" id="startAt">
+        <label>Note (optionnel)</label>
+        <input type="text" id="note" placeholder="Détails de la réservation">
+        <button onclick="createReservation()">Réserver</button>
+    </section>
+
+    <section>
+        <h2>Mes réservations</h2>
+        <div id="reservations">Connecte-toi pour voir tes réservations.</div>
+    </section>
 
     <script>
-        const token = prompt('Token JWT :');
+        let token = null;
 
-        fetch('/api/reservations', {
-            headers: {
-                'Authorization': 'Bearer ' + token
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!res.ok) {
+                document.getElementById('status').textContent = 'Échec de la connexion';
+                return;
             }
-        })
-        .then(res => res.json())
-        .then(data => {
+
+            const data = await res.json();
+            token = data.token;
+            document.getElementById('status').textContent = 'Connecté en tant que ' + email;
+            document.getElementById('create-section').style.display = 'block';
+            loadReservations();
+        }
+
+        async function createReservation() {
+            if (!token) return;
+
+            const resourceName = document.getElementById('resourceName').value;
+            const startAt = document.getElementById('startAt').value;
+            const note = document.getElementById('note').value;
+
+            if (!resourceName || !startAt) {
+                alert('Merci de remplir au moins le nom de la ressource et la date.');
+                return;
+            }
+
+            await fetch('/api/reservations', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/ld+json'
+                },
+                body: JSON.stringify({
+                    resourceName: resourceName,
+                    startAt: new Date(startAt).toISOString(),
+                    status: 'pending',
+                    note: note
+                })
+            });
+
+            document.getElementById('resourceName').value = '';
+            document.getElementById('startAt').value = '';
+            document.getElementById('note').value = '';
+
+            loadReservations();
+        }
+
+        async function loadReservations() {
+            if (!token) return;
+
+            const res = await fetch('/api/reservations', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+
             const container = document.getElementById('reservations');
-            data['member'].forEach(r => {
-                const wrapper = document.createElement('div');
+            container.innerHTML = '';
+
+            if (!data.member || data.member.length === 0) {
+                container.textContent = 'Aucune réservation.';
+                return;
+            }
+
+            data.member.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'reservation';
 
                 const title = document.createElement('strong');
                 title.textContent = r.resourceName;
 
-                const separator = document.createTextNode(' - ');
+                const date = document.createElement('span');
+                date.textContent = ' — ' + new Date(r.startAt).toLocaleString('fr-FR');
 
-                const note = document.createElement('span');
-                note.textContent = r.note;
+                const status = document.createElement('span');
+                status.textContent = ' [' + r.status + ']';
 
-                wrapper.appendChild(title);
-                wrapper.appendChild(separator);
-                wrapper.appendChild(note);
-                container.appendChild(wrapper);
+                const noteEl = document.createElement('div');
+                noteEl.textContent = r.note || '';
+
+                div.appendChild(title);
+                div.appendChild(date);
+                div.appendChild(status);
+                div.appendChild(noteEl);
+                container.appendChild(div);
             });
-        });
+        }
     </script>
 </body>
 </html>
